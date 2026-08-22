@@ -16,6 +16,7 @@ try:
         STORAGE_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
         DOCUMENTS_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "documents")
         INDEX_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "vector_store")
+        BASE_DIR: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
         class Config:
             env_file = ".env"
             extra = "ignore"
@@ -34,6 +35,7 @@ except ImportError:
         STORAGE_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
         DOCUMENTS_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "documents")
         INDEX_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "vector_store")
+        BASE_DIR: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 settings = Settings()
 

@@ -5,6 +5,8 @@ import logging
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from backend.app.config import settings
@@ -499,4 +501,22 @@ def reindex_all(strategy: str = Form("recursive"), chunk_size: int = Form(500)):
 def get_metrics():
     """Returns analytics, query count, success rate, and P50/P70/P100 latency percentiles."""
     return metrics_tracker.get_dashboard_metrics()
+
+
+# ── Serve Built React Frontend (Unified Single-Deployment Mode) ──────────────────
+DIST_DIR = os.path.join(settings.BASE_DIR, "dist")
+
+if os.path.exists(DIST_DIR):
+    assets_dir = os.path.join(DIST_DIR, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api"):
+            raise HTTPException(status_code=404, detail="API route not found")
+        file_path = os.path.join(DIST_DIR, full_path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(DIST_DIR, "index.html"))
 

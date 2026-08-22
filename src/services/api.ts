@@ -43,10 +43,14 @@ export interface MSMARCOSource {
 
 export interface MSMARCOStats {
   indexed: boolean;
+  is_indexed?: boolean;
   total_chunks_in_store: number;
+  total_chunks?: number;
+  unique_query_ids?: number;
   msmarco_chunks: number;
   selected_passage_chunks: number;
   strategy_breakdown: Record<string, number>;
+  index_metadata?: any;
   marker: {
     status?: string;
     dataset?: string;
@@ -74,6 +78,7 @@ export interface QueryResponse {
     llm_draft: any;
     guardrail_status: string;
     guardrail_reason: string;
+    groundedness_pass?: number;
   };
   tts?: {
     text: string;
