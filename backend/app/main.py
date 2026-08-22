@@ -25,6 +25,7 @@ from backend.app.utils.translation import translate_query_to_english
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+DIST_DIR = os.path.join(settings.BASE_DIR, "dist")
 
 app = FastAPI(
     title="Voice-Enabled RAG System – MSMARCO-XI",
@@ -136,14 +137,7 @@ class MSMARCOIngestRequest(BaseModel):
 
 @app.get("/")
 def read_root():
-    marker = msmarco_ingestor.read_marker()
-    return {
-        "status": "online",
-        "system": "Voice-Enabled RAG Model (Hacker House Goa 2026) + MSMARCO-XI",
-        "indexed_chunks": len(vector_store.chunks),
-        "msmarco_indexed": msmarco_ingestor.already_indexed(),
-        "msmarco_records": marker.get("records_processed", 0),
-    }
+    return FileResponse(os.path.join(DIST_DIR, "index.html")) 
 
 @app.post("/api/query")
 async def execute_rag_pipeline(request: QueryRequest):
@@ -504,13 +498,12 @@ def get_metrics():
 
 
 # ── Serve Built React Frontend (Unified Single-Deployment Mode) ──────────────────
-DIST_DIR = os.path.join(settings.BASE_DIR, "dist")
+
 
 if os.path.exists(DIST_DIR):
     assets_dir = os.path.join(DIST_DIR, "assets")
     if os.path.exists(assets_dir):
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
-
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         if full_path.startswith("api"):
