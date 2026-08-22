@@ -10,3 +10,4 @@ venv/
 backend/data/vector_store/
 backend/data/msmarco.parquet
 backend/data/*.parquet
+railway_variables.json
