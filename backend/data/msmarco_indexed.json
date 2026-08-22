@@ -1,0 +1,10 @@
+{
+  "status": "success",
+  "dataset": "ai4bharat/MSMARCO-XI",
+  "strategy": "recursive",
+  "records_processed": 5000,
+  "passages_processed": 49984,
+  "chunks_added": 57552,
+  "elapsed_sec": 1276.5,
+  "indexed_at": "2026-08-22T13:26:22Z"
+}

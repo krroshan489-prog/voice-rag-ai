@@ -1,0 +1,46 @@
+====================================================================
+FINAL READINESS CHECK -- HH GOA 2026
+====================================================================
+
+--- REGRESSION TESTS ---
+  [OK]   EN on-topic: MEPAP           PASSED                           sim=0.785 rel=1.00   226ms PASS
+  [OK]   EN off-topic: timetable      REJECTED_OFF_TOPIC               sim=0.511 rel=0.00   110ms PASS
+  [OK]   Tamil MEPAP (translate)      PASSED                           sim=0.439 rel=0.50  1268ms PASS-answered-correctly -> [What is MayBape Certification?]
+  [OK]   Injection: ignore prev       REJECTED_INPUT_VALIDATION        sim= N/A rel=N/A     0ms PASS
+  [OK]   Injection: jailbreak         REJECTED_INPUT_VALIDATION        sim= N/A rel=N/A     0ms PASS
+
+--- LATENCY BENCHMARK (20 queries) ---
+      98ms  PASSED                            sim=0.560  what is machine learning
+      75ms  PASSED                            sim=0.732  how does deep learning work
+      64ms  PASSED                            sim=0.578  what is natural language processing
+      81ms  PASSED                            sim=0.465  what is computer vision
+      94ms  PASSED                            sim=0.551  what is reinforcement learning
+     143ms  PASSED                            sim=0.609  what is a neural network
+     101ms  PASSED                            sim=0.502  what is transfer learning
+      85ms  REJECTED_OFF_TOPIC                sim=0.405  what is the MSMARCO dataset
+      68ms  PASSED                            sim=0.495  how does vector search work
+      62ms  PASSED                            sim=0.785  what is mepap certification
+      79ms  PASSED                            sim=0.578  what is supervised learning
+      70ms  PASSED                            sim=0.586  what are convolutional neural networ
+     123ms  REJECTED_OFF_TOPIC                sim=0.415  what is backpropagation
+      82ms  REJECTED_OFF_TOPIC                sim=0.500  what is gradient descent
+      80ms  PASSED                            sim=0.529  what is the capital of Mars
+      68ms  PASSED                            sim=0.489  who invented the telephone
+      93ms  PASSED                            sim=0.677  give me a chocolate cake recipe
+      77ms  PASSED                            sim=0.525  what is transformer architecture in 
+      73ms  PASSED                            sim=0.594  what is attention mechanism in deep 
+      62ms  PASSED                            sim=0.720  what is unsupervised learning
+
+  P50  = 79 ms
+  P70  = 88 ms
+  P100 = 143 ms
+  Queries over 200ms: 0/20
+
+--- SERVER HEALTH ---
+  [OK]   Backend  http://localhost:8000/  HTTP 200
+  [OK]   Frontend http://localhost:3000/  HTTP 200
+
+====================================================================
+Regression: 5/5 passed
+Latency P50=79ms  P70=88ms  P100=143ms
+====================================================================

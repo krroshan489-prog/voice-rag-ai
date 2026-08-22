@@ -1,0 +1,3 @@
+# Goa Hackathon 2026 Rules
+Rule 1: All solutions must be grounded in context.
+Rule 2: Vector latency must be measured under 200ms.

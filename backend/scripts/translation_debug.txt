@@ -1,0 +1,11 @@
+Tamil input  : மேபேப் சான்றிதழ் என்றால் என்ன?
+Translated to: What is MEPAP certification?
+
+API translated_query : What is MEPAP certification?
+API was_translated   : True
+guardrail_status     : PASSED
+can_answer           : True
+confidence           : 0.98
+answer               : Education Program for Activity Professionals (MEPAP) component. standards and certification for online courses.
+sources              : ['MSMARCO-XI (query_id=1051211 | passage=1 | selected=0 | lang=eng_Latn)', 'MSMARCO-XI (query_id=1051211 | passage=3 | selected=0 | lang=eng_Latn)', 'MSMARCO-XI (query_id=1051211 | passage=5 | selected=1 | lang=eng_Latn)']
+msmarco_sources qids : [1051211, 1051211, 1051211]
