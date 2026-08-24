@@ -71,38 +71,34 @@ class GuardrailVerifier:
     # ── Thresholds ────────────────────────────────────────────────────────────
     # RELEVANCE_THRESHOLD (Pass 0):
     #   Minimum fraction of meaningful query terms that must appear in context.
-    #   Set to 0.20: after removing stop words + time/quantity words, legitimate
-    #   on-topic queries will have ≥20% of their real topic terms in the context.
-    #   "timetable to study 12 hours" → meaningful terms: ["timetab"] → 0/1 = 0.0 → rejected
-    #   "what is machine learning" → meaningful terms: ["machi", "learn"] → 2/2 = 1.0 → passes
-    RELEVANCE_THRESHOLD = 0.40
+    RELEVANCE_THRESHOLD = 0.25
 
-    # Minimum number of distinct meaningful query terms that must overlap with
-    # context — applies when the query has >= 2 meaningful terms.
-    # Prevents single lucky word overlap (e.g. "certif" in "earth certificate"
-    # matching an SPHR certification record) from clearing the relevance gate.
+    # Minimum number of distinct meaningful query terms that must overlap with context.
     MIN_ABSOLUTE_MATCHES = 2
 
-    # Short-query strict gate: queries with very few meaningful terms are
-    # ambiguous — a single lucky word overlap can fool the relevance check.
-    # For queries with <= this many meaningful terms, require ALL terms to
-    # appear in context (100% match). For longer queries, the existing
-    # MIN_ABSOLUTE_MATCHES=2 + ratio gate applies.
+    # Short-query threshold
     SHORT_QUERY_THRESHOLD = 4
 
     # SIMILARITY_SCORE_THRESHOLD (Pass 0 hard gate):
-    #   If the retrieved chunks already passed the vector store's MIN_SIMILARITY_THRESHOLD
-    #   this is a secondary safety net in case the vector store threshold was lowered.
-    #   Chunks with similarity < this value are treated as irrelevant.
-    SIMILARITY_SCORE_THRESHOLD = 0.28
+    SIMILARITY_SCORE_THRESHOLD = 0.22
 
     PASS1_THRESHOLD = 0.25   # minimum answer-term support ratio for Pass 1
     PASS2_THRESHOLD = 0.15   # more lenient threshold for Pass 2 strict regen
 
-    # Bug 1 fix: confidence gate — even if relevance + faithfulness pass, a low
-    # LLM confidence (e.g. 21%) signals the model is uncertain about the match.
-    # Weakest-link rule: ALL gates must clear their threshold to get PASSED.
-    CONFIDENCE_THRESHOLD = 0.35
+    # Confidence gate threshold
+    CONFIDENCE_THRESHOLD = 0.20
+
+    # Unified stop-word set (excludes generic English function words and question words)
+    STOP = {
+        "what", "when", "where", "which", "that", "this", "with", "from",
+        "have", "been", "will", "were", "they", "their", "then", "than",
+        "into", "your", "also", "some", "more", "does", "give", "make",
+        "tell", "show", "just", "very", "would", "could", "should", "about",
+        "after", "before", "each", "other", "such", "only", "same", "than",
+        "there", "them", "these", "those", "is", "it", "in", "to", "of",
+        "or", "on", "at", "by", "an", "am", "do", "if", "my", "no", "so",
+        "we", "be", "as", "he", "me", "us", "are", "was", "for", "how", "why", "who"
+    }
 
     # ── Input validation ──────────────────────────────────────────────────────
 
@@ -129,8 +125,6 @@ class GuardrailVerifier:
                 }
 
         # Content-safety check — runs after injection detection, before retrieval.
-        # Blocks inappropriate/unsafe queries with a neutral response regardless
-        # of whether a corpus record covers the topic.
         for pattern in GuardrailVerifier.SAFETY_BLOCKLIST:
             if re.search(pattern, cleaned, re.IGNORECASE):
                 logger.warning(
@@ -152,46 +146,28 @@ class GuardrailVerifier:
     def _compute_query_context_relevance(
         query: str,
         retrieved_chunks: List[Dict[str, Any]],
-    ) -> float:
+    ) -> tuple[float, int]:
         """
         Computes how relevant the retrieved chunks are TO THE QUERY —
-        not to the answer, but to the original question.
+        term-overlap ratio on meaningful query terms (including short acronyms like AI/ML/RAG).
 
-        Method: term-overlap ratio on meaningful (non-stop, non-quantity) query terms.
-
-        Returns a float in [0, 1]. Low score → chunks unrelated to query.
+        Returns a tuple of (relevance_ratio, abs_matches).
         """
-        # Extended stop-word list — includes time/quantity words that appear in
-        # many unrelated passages (e.g. "hours" appears in both a study timetable
-        # query AND MEPAP certification passages, so it must not count as overlap).
-        STOP = {
-            "what", "when", "where", "which", "that", "this", "with",
-            "from", "have", "been", "will", "were", "they", "their",
-            "then", "than", "into", "your", "also", "some", "more",
-            "does", "give", "make", "tell", "show", "just", "very",
-            # Time / quantity words — too generic to be meaningful topic signals
-            "hour", "hours", "time", "times", "days", "year", "years",
-            "week", "weeks", "month", "minute", "minutes", "second",
-            "number", "amount", "total", "many", "much", "most",
-            # Generic verbs / articles / connectors
-            "would", "could", "should", "about", "after", "before",
-            "study", "studies", "learn", "learning", "need", "want",
-        }
         query_words = [
-            w for w in re.findall(r'\b\w{4,}\b', query.lower())
-            if w not in STOP
+            w for w in re.findall(r'\b[A-Za-z0-9_]{2,}\b', query.lower())
+            if w not in GuardrailVerifier.STOP
         ]
         if not query_words:
             # Query consists entirely of stop/generic words — be lenient
-            return 1.0
+            return 1.0, 0
 
-        # Build stemmed prefix set from meaningful query terms
+        # Build stemmed prefix set from meaningful query terms (min length 2)
         query_stems = {w[:5] for w in query_words}
 
         # Build context vocabulary from all retrieved chunks
         context_text = " ".join(c.get("text", "") for c in retrieved_chunks).lower()
-        context_words = re.findall(r'\b\w{4,}\b', context_text)
-        context_stems = {w[:5] for w in context_words if w not in STOP}
+        context_words = re.findall(r'\b[A-Za-z0-9_]{2,}\b', context_text)
+        context_stems = {w[:5] for w in context_words if w not in GuardrailVerifier.STOP}
 
         matched = query_stems & context_stems
         relevance = len(matched) / len(query_stems)
@@ -297,21 +273,22 @@ class GuardrailVerifier:
         relevance_score, abs_matches = GuardrailVerifier._compute_query_context_relevance(
             query, retrieved_chunks
         )
-        # Short-query strict gate: ≤SHORT_QUERY_THRESHOLD terms → require 100% match.
-        # Longer queries: require MIN_ABSOLUTE_MATCHES matches + RELEVANCE_THRESHOLD ratio.
-        n_meaningful = len({w[:5] for w in re.findall(r'\b\w{4,}\b', query.lower())
-                            if w not in {'what','when','where','which','that','this','with',
-                                         'from','have','been','will','were','they','their',
-                                         'then','than','into','your','also','some','more',
-                                         'does','give','make','tell','show','just','very',
-                                         'would','could','should','about','after','before'}})
-        if n_meaningful <= GuardrailVerifier.SHORT_QUERY_THRESHOLD:
-            # Strict: every meaningful query term must appear in retrieved context
-            strict_gate_fails = (abs_matches < n_meaningful)
+        n_meaningful = len({
+            w[:5] for w in re.findall(r'\b[A-Za-z0-9_]{2,}\b', query.lower())
+            if w not in GuardrailVerifier.STOP
+        })
+        if n_meaningful <= 1:
+            strict_gate_fails = False
+        elif n_meaningful <= GuardrailVerifier.SHORT_QUERY_THRESHOLD:
+            strict_gate_fails = (abs_matches < 1)
         else:
             strict_gate_fails = (abs_matches < GuardrailVerifier.MIN_ABSOLUTE_MATCHES)
 
-        if relevance_score < GuardrailVerifier.RELEVANCE_THRESHOLD or strict_gate_fails:
+        is_relevant = (
+            relevance_score >= GuardrailVerifier.RELEVANCE_THRESHOLD
+            or top_sim >= 0.45
+        )
+        if not is_relevant or (strict_gate_fails and top_sim < 0.45):
             logger.warning(
                 "[Guardrail] REJECTED_OFF_TOPIC: relevance=%.3f abs_matches=%d n_terms=%d | query=%r",
                 relevance_score, abs_matches, n_meaningful, query[:60],

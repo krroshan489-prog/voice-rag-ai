@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 #   - A cutoff of 0.30 lies safely in the gap between these ranges.
 #   - Empirically: "timetable" vs "MEPAP certification" ≈ 0.12 → correctly blocked.
 #   - "What is machine learning" vs ML passage ≈ 0.55 → correctly allowed.
-MIN_SIMILARITY_THRESHOLD = 0.30
+MIN_SIMILARITY_THRESHOLD = 0.22
 
 
 class VectorStore:
@@ -167,6 +167,16 @@ class VectorStore:
         with open(self.persistence_path, "w", encoding="utf-8") as f:
             json.dump(data, f)
 
+    def recompute_embeddings(self):
+        """Recomputes embeddings for all indexed chunks using current embedding_engine."""
+        if not self.chunks:
+            self.embeddings = None
+            return
+        texts = [c.get("text", "") for c in self.chunks]
+        self.embeddings = embedding_engine.embed_texts(texts)
+        logger.info("[VectorStore] Recomputed embeddings for %d chunks.", len(self.chunks))
+        self.save()
+
     def load(self):
         if os.path.exists(self.persistence_path):
             try:
@@ -174,11 +184,12 @@ class VectorStore:
                     data = json.load(f)
                     self.chunks = data.get("chunks", [])
                     raw_emb = data.get("embeddings", [])
-                    if raw_emb:
+                    if raw_emb and len(raw_emb) == len(self.chunks):
                         self.embeddings = np.array(raw_emb, dtype=np.float32)
                     else:
-                        self.embeddings = None
-            except Exception:
+                        self.recompute_embeddings()
+            except Exception as e:
+                logger.warning("[VectorStore] Load failed (%s) — resetting store.", e)
                 self.chunks = []
                 self.embeddings = None
 

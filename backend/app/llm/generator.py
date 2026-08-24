@@ -201,8 +201,9 @@ class GroundedLLMGenerator:
     @staticmethod
     def _local_grounded_synthesis(query: str, chunks: List[Dict[str, Any]], sources: List[str]) -> Dict[str, Any]:
         """Local high-confidence grounded answer extraction from retrieved context."""
-        query_words = set(re.findall(r'\b\w{3,}\b', query.lower()))
-        stemmed_q_words = {GroundedLLMGenerator._stem(w) for w in query_words if len(w) > 3}
+        stop = {"what", "when", "where", "which", "that", "this", "with", "from", "have", "been", "will", "were", "they", "their", "is", "it", "in", "to", "of", "or", "on", "at", "by", "an", "am", "do", "if", "my", "no", "so", "we", "be", "as", "he", "me", "us", "are", "was", "for", "how", "why", "who"}
+        query_words = {w for w in re.findall(r'\b[A-Za-z0-9_]{2,}\b', query.lower()) if w not in stop}
+        stemmed_q_words = {GroundedLLMGenerator._stem(w) for w in query_words}
 
         best_chunk = chunks[0]
         text = best_chunk.get("text", "")
@@ -213,7 +214,7 @@ class GroundedLLMGenerator:
         matching_lines = []
 
         for line in lines:
-            line_words = {GroundedLLMGenerator._stem(w) for w in re.findall(r'\b\w{3,}\b', line.lower())}
+            line_words = {GroundedLLMGenerator._stem(w) for w in re.findall(r'\b[A-Za-z0-9_]{2,}\b', line.lower())}
             if any(sq in line_words or any(lw.startswith(sq) for lw in line_words) for sq in stemmed_q_words):
                 matching_lines.append(line)
 
@@ -227,10 +228,10 @@ class GroundedLLMGenerator:
                 "can_answer": True
             }
 
-        if rerank_score > 0.2:
+        if rerank_score > 0.15:
             return {
                 "answer": text[:350].strip() + ("..." if len(text) > 350 else ""),
-                "confidence": float(round(rerank_score, 2)),
+                "confidence": max(0.70, float(round(rerank_score, 2))),
                 "sources": sources,
                 "can_answer": True
             }

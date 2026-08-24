@@ -35,3 +35,36 @@ def test_grounded_answer_guardrail_passed():
     verified = guardrail_verifier.verify_groundedness(query, retrieved_chunks, llm_draft)
     assert verified["can_answer"] is True
     assert verified["guardrail_status"] == "PASSED"
+
+def test_short_acronym_query_unpacking():
+    query = "What is ML?"
+    retrieved_chunks = [{
+        "text": "Machine learning (ML) is a subset of AI that allows systems to learn from data.",
+        "similarity_score": 0.85
+    }]
+    llm_draft = {
+        "answer": "ML (Machine Learning) allows systems to learn from data.",
+        "confidence": 0.90,
+        "sources": ["ml.md"],
+        "can_answer": True
+    }
+    verified = guardrail_verifier.verify_groundedness(query, retrieved_chunks, llm_draft)
+    assert verified["can_answer"] is True
+    assert verified["guardrail_status"] in ("PASSED", "PASSED_STRICT_REGEN")
+
+def test_machine_learning_query_on_topic():
+    query = "What is machine learning?"
+    retrieved_chunks = [{
+        "text": "Machine learning is a field of study focused on understanding and building methods that learn.",
+        "similarity_score": 0.88
+    }]
+    llm_draft = {
+        "answer": "Machine learning is a field focused on methods that learn.",
+        "confidence": 0.92,
+        "sources": ["doc.md"],
+        "can_answer": True
+    }
+    verified = guardrail_verifier.verify_groundedness(query, retrieved_chunks, llm_draft)
+    assert verified["can_answer"] is True
+    assert verified["guardrail_status"] in ("PASSED", "PASSED_STRICT_REGEN")
+

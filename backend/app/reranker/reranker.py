@@ -23,7 +23,7 @@ class TwoStageReranker:
         if not retrieved_chunks:
             return []
 
-        raw_terms = set(re.findall(r'\b\w{3,}\b', query.lower()))
+        raw_terms = set(re.findall(r'\b[A-Za-z0-9_]{2,}\b', query.lower()))
         stemmed_terms = {TwoStageReranker._stem_word(t) for t in raw_terms}
         
         reranked = []
@@ -32,7 +32,7 @@ class TwoStageReranker:
             sim_score = chunk.get("similarity_score", 0.0)
 
             # Keyword match ratio with stemming support
-            chunk_words = {TwoStageReranker._stem_word(w) for w in re.findall(r'\b\w{3,}\b', text)}
+            chunk_words = {TwoStageReranker._stem_word(w) for w in re.findall(r'\b[A-Za-z0-9_]{2,}\b', text)}
             matched_terms = [t for t in stemmed_terms if t in chunk_words or any(cw.startswith(t) for cw in chunk_words)]
             keyword_ratio = len(matched_terms) / max(1, len(stemmed_terms))
 
