@@ -102,15 +102,17 @@ initialize_demo_documents()
 # MSMARCO-XI Background ingestion: load persistent index at startup if exists
 # ---------------------------------------------------------------------------
 def _try_restore_msmarco_index():
-    """If MSMARCO has been indexed before, log stats; otherwise trigger automatic background ingestion of initial records."""
+    """If MSMARCO has been indexed before, log stats; otherwise require manual ingestion."""
     if msmarco_ingestor.already_indexed():
         marker = msmarco_ingestor.read_marker()
         logger.info(
             "MSMARCO-XI persistent index detected: %d chunks, indexed at %s.",
-            marker.get("chunks_added", 0), marker.get("indexed_at", "?")
+            marker.get("chunks_added", 0),
+            marker.get("indexed_at", "?")
         )
     else:
-    logger.info("MSMARCO-XI index not found. Manual ingestion required.")
+        logger.info("MSMARCO-XI index not found. Manual ingestion required.")
+
 
 _try_restore_msmarco_index()
 
