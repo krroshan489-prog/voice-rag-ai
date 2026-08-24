@@ -322,13 +322,16 @@ def _extract_msmarco_metadata(chunks: List[Dict[str, Any]]) -> List[Dict[str, An
 # ---------------------------------------------------------------------------
 # MSMARCO-XI Specific Endpoints
 # ---------------------------------------------------------------------------
-
 @app.post("/api/msmarco/ingest")
-async def ingest_msmarco(request: MSMARCOIngestRequest, background_tasks: BackgroundTasks):
+async def ingest_msmarco(
+    request: MSMARCOIngestRequest,
+    background_tasks: BackgroundTasks
+):
     """
     Triggers ingestion of ai4bharat/MSMARCO-XI dataset into the vector store.
-    Supports persistent indexing — subsequent calls skip re-ingestion unless force=True.
+    Runs ingestion in the background to avoid Railway HTTP timeout.
     """
+
     if msmarco_ingestor.already_indexed() and not request.force:
         marker = msmarco_ingestor.read_marker()
         return {
@@ -337,31 +340,41 @@ async def ingest_msmarco(request: MSMARCOIngestRequest, background_tasks: Backgr
             **marker
         }
 
-    # Run ingestion synchronously for small batches, async for large
-    if (request.max_records or 200) <= 500:
-        stats = msmarco_ingestor.ingest(
-            max_records=request.max_records or 200,
-            strategy=request.strategy or "recursive",
-            force=request.force or False,
-        )
-        return stats
-    else:
-        # For large ingestion, run in background
-        def _ingest_bg():
-            msmarco_ingestor.ingest(
+    def _ingest_bg():
+        try:
+            logger.info(
+                "[MSMARCO] Background ingestion started: %d records",
+                request.max_records or 200
+            )
+
+            stats = msmarco_ingestor.ingest(
                 max_records=request.max_records or 200,
                 strategy=request.strategy or "recursive",
                 force=request.force or False,
             )
-        background_tasks.add_task(_ingest_bg)
-        return {
-            "status": "ingestion_started",
-            "message": f"Background ingestion started for {request.max_records} records.",
-            "strategy": request.strategy
-        }
+
+            logger.info(
+                "[MSMARCO] Background ingestion finished: %s",
+                stats
+            )
+
+        except Exception:
+            logger.exception(
+                "[MSMARCO] Background ingestion FAILED"
+            )
+
+    background_tasks.add_task(_ingest_bg)
+
+    return {
+        "status": "ingestion_started",
+        "message": f"Background ingestion started for {request.max_records or 200} records.",
+        "strategy": request.strategy or "recursive"
+    }
+
 
 @app.get("/api/msmarco/stats")
 def get_msmarco_stats():
+
     """Returns MSMARCO-XI ingestion statistics and index health."""
     marker = msmarco_ingestor.read_marker()
     msmarco_chunks = [c for c in vector_store.chunks if c.get("dataset_source") == "MSMARCO-XI"]
